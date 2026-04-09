@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="筋トレ記録">
+<meta name="mobile-web-app-capable" content="yes">
+<title>筋トレ記録</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
+
+.app { max-width: 480px; margin: 0 auto; padding: 1rem; padding-bottom: 2rem; }
+.header { margin-bottom: 1.5rem; padding-top: env(safe-area-inset-top, 0.5rem); }
+.header h1 { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+.header .date { font-size: 13px; color: #888; margin-top: 3px; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; background: #e8e8e3; border-radius: 10px; padding: 4px; }
+.tab { flex: 1; padding: 9px; font-size: 14px; font-weight: 500; border: none; background: transparent; color: #888; border-radius: 8px; cursor: pointer; }
+.tab.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* 進捗バー */
+.progress-bar-wrap { margin-bottom: 1rem; background: #fff; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.progress-label { font-size: 12px; color: #888; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.progress-bar { height: 7px; background: #e8e8e3; border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: #1D9E75; border-radius: 99px; transition: width 0.3s; }
+
+/* 種目カード */
+.exercise-card { background: #fff; border: 1.5px solid #e8e8e3; border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: 12px; transition: border-color 0.2s, background 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.exercise-card.done { border-color: #1D9E75; background: #f2fdf8; }
+.exercise-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.exercise-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.exercise-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+.exercise-muscle { font-size: 12px; color: #888; margin-top: 1px; }
+
+.check-area { margin-left: auto; width: 30px; height: 30px; border-radius: 7px; border: 2px solid #ccc; background: #f5f5f0; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+.check-area.checked { background: #9FE1CB; border-color: #1D9E75; }
+.check-area .chk-svg { display: none; }
+.check-area.checked .chk-svg { display: block; }
+
+.fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 11px; color: #888; text-align: center; }
+.field input { width: 100%; padding: 9px 4px; font-size: 16px; border: 1.5px solid #e8e8e3; border-radius: 8px; background: #f9f9f7; color: #1a1a1a; text-align: center; font-family: inherit; }
+.field input:focus { outline: none; border-color: #1D9E75; background: #fff; }
+
+.counter-wrap { display: flex; align-items: center; justify-content: center; }
+.cnt-btn { width: 36px; height: 38px; border: 1.5px solid #e8e8e3; background: #f9f9f7; color: #1a1a1a; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.cnt-btn:first-child { border-radius: 8px 0 0 8px; border-right: none; }
+.cnt-btn:last-child { border-radius: 0 8px 8px 0; border-left: none; }
+.cnt-btn:active { background: #e8e8e3; }
+.cnt-val { width: 40px; height: 38px; font-size: 17px; font-weight: 600; border-top: 1.5px solid #e8e8e3; border-bottom: 1.5px solid #e8e8e3; background: #fff; color: #1a1a1a; text-align: center; display: flex; align-items: center; justify-content: center; }
+
+.memo-row { display: flex; align-items: center; gap: 8px; }
+.memo-label { font-size: 11px; color: #888; white-space: nowrap; }
+.memo-input { flex: 1; padding: 8px 10px; font-size: 14px; border: 1.5px solid #e8e8e3; border-radius: 8px; background: #f9f9f7; color: #1a1a1a; font-family: inherit; }
+.memo-input:focus { outline: none; border-color: #1D9E75; background: #fff; }
+
+.save-btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 600; border: none; background: #1D9E75; color: #fff; border-radius: 12px; cursor: pointer; margin-top: 8px; box-shadow: 0 2px 8px rgba(29,158,117,0.3); }
+.save-btn:active { background: #0F6E56; transform: scale(0.98); }
+
+/* 実績タブ */
+.month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.month-nav-btn { width: 36px; height: 36px; border: 1.5px solid #e8e8e3; background: #fff; color: #1a1a1a; border-radius: 8px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+.month-nav-btn:active { background: #e8e8e3; }
+.month-title { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+.stat-card { background: #fff; border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.stat-val { font-size: 30px; font-weight: 700; color: #1a1a1a; }
+.stat-unit { font-size: 12px; color: #888; }
+.stat-label { font-size: 12px; color: #888; margin-top: 3px; }
+
+.calendar { background: #fff; border-radius: 14px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
+.cal-dow-cell { text-align: center; font-size: 11px; color: #aaa; padding: 2px 0; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 14px; color: #888; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cal-cell:active { opacity: 0.7; }
+.cal-cell.today { font-weight: 700; color: #1a1a1a; border: 2px solid #ccc; }
+.cal-cell.worked { background: #1D9E75; color: #fff; font-weight: 600; }
+.cal-cell.worked:active { background: #0F6E56; }
+.cal-cell.selected { outline: 2.5px solid #1D9E75; outline-offset: 1px; }
+.cal-cell.worked.selected { background: #085041; outline: none; }
+.cal-cell.empty { cursor: default; }
+
+.day-panel { background: #fff; border: 2px solid #1D9E75; border-radius: 14px; padding: 14px; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.day-panel-header { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.detail-badge { font-size: 11px; color: #0F6E56; background: #e1f5ee; padding: 3px 8px; border-radius: 10px; white-space: nowrap; font-weight: 500; }
+.history-ex-line { font-size: 13px; padding: 7px 0; border-bottom: 1px solid #f0f0ec; display: flex; justify-content: space-between; align-items: center; }
+.history-ex-line:last-child { border-bottom: none; }
+.history-ex-name { color: #1a1a1a; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.done-mark { color: #1D9E75; font-weight: 700; }
+.history-ex-memo { font-size: 11px; color: #aaa; margin-top: 2px; }
+.history-ex-val { font-size: 12px; color: #888; white-space: nowrap; }
+
+.panel-action-btn { font-size: 13px; color: #888; border: 1.5px solid #e8e8e3; border-radius: 6px; background: transparent; padding: 5px 12px; cursor: pointer; }
+.panel-action-btn:active { background: #f0f0ec; }
+.edit-save-btn { width: 100%; padding: 12px; font-size: 15px; font-weight: 600; border: none; background: #1D9E75; color: #fff; border-radius: 12px; cursor: pointer; margin-top: 8px; }
+.edit-save-btn:active { background: #0F6E56; }
+.edit-cancel-btn { width: 100%; padding: 12px; font-size: 15px; border: 1.5px solid #e8e8e3; background: transparent; color: #888; border-radius: 12px; cursor: pointer; margin-top: 8px; }
+.edit-cancel-btn:active { background: #f0f0ec; }
+
+.clear-btn { font-size: 12px; color: #aaa; border: 1px solid #e8e8e3; border-radius: 6px; background: transparent; padding: 4px 10px; cursor: pointer; }
+
+/* トースト */
+.toast { position: fixed; top: env(safe-area-inset-top, 20px); left: 50%; transform: translateX(-50%); background: #1D9E75; color: #fff; padding: 10px 24px; border-radius: 24px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; z-index: 999; box-shadow: 0 4px 12px rgba(29,158,117,0.4); }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast">保存しました！</div>
+<div class="app">
+  <div class="header">
+    <h1>筋トレ記録</h1>
+    <div class="date" id="today-date"></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('record')">記録</button>
+    <button class="tab" onclick="switchTab('history')">実績</button>
+  </div>
+  <div class="view active" id="view-record"></div>
+  <div class="view" id="view-history"></div>
+</div>
+
+<script>
+const EXERCISES = [
+  { id:'chest',    name:'チェストプレス',          muscle:'胸',        icon:'💪', color:'#FAECE7' },
+  { id:'back',     name:'バーティカルトラクション',  muscle:'背中',      icon:'🏋️', color:'#E6F1FB' },
+  { id:'leg',      name:'レッグプレス',             muscle:'脚',        icon:'🦵', color:'#EAF3DE' },
+  { id:'shoulder', name:'ショルダープレス',          muscle:'肩',        icon:'🙌', color:'#EEEDFE' },
+  { id:'abs',      name:'アブドミナル',              muscle:'腹筋',      icon:'⚡', color:'#FAEEDA' },
+  { id:'lower',    name:'ローアーバック',            muscle:'腰・背下部', icon:'🔄', color:'#E1F5EE' },
+];
+
+let state = {};
+EXERCISES.forEach(ex => { state[ex.id] = { weight:'', reps:'', sets:3, comment:'', done:false }; });
+let viewMonth = { year:new Date().getFullYear(), month:new Date().getMonth() };
+let selectedDate = null;
+let panelMode = null;
+let editState = {};
+
+function getHistory() { try { return JSON.parse(localStorage.getItem('kintorekioku_v1')||'[]'); } catch(e) { return []; } }
+function saveHistory(h) { try { localStorage.setItem('kintorekioku_v1', JSON.stringify(h)); } catch(e) {} }
+function todayStr() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function formatDateLabel(str) { const [y,m,d]=str.split('-').map(Number); return `${m}月${d}日（${'日月火水木金土'[new Date(y,m-1,d).getDay()]}）`; }
+function chkSVG() { return `<svg class="chk-svg" width="16" height="16" viewBox="0 0 16 16" fill="none"><polyline points="3,8 6.5,12 13,4" stroke="#085041" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+
+function toggleDone(exId) {
+  state[exId].done = !state[exId].done;
+  document.getElementById('card-'+exId).classList.toggle('done', state[exId].done);
+  document.getElementById('chk-'+exId).classList.toggle('checked', state[exId].done);
+  updateProgress();
+}
+function updateProgress() {
+  const n = EXERCISES.filter(ex=>state[ex.id].done).length;
+  document.getElementById('prog-fill').style.width = Math.round(n/EXERCISES.length*100)+'%';
+  document.getElementById('prog-label').textContent = `${n} / ${EXERCISES.length} 完了`;
+}
+function changeCount(exId, delta, st) {
+  st[exId].sets = Math.max(1,(st[exId].sets||1)+delta);
+  const el = document.getElementById('cnt-'+exId);
+  if(el) el.textContent = st[exId].sets;
+}
+
+function exCardHTML(ex, s, chkId, cardId, toggleFn, stRef, cntPre, cntSuf) {
+  return `<div class="exercise-card${s.done?' done':''}" id="${cardId}">
+    <div class="exercise-header">
+      <div class="exercise-icon" style="background:${ex.color}">${ex.icon}</div>
+      <div><div class="exercise-name">${ex.name}</div><div class="exercise-muscle">${ex.muscle}</div></div>
+      <div class="check-area${s.done?' checked':''}" id="${chkId}" onclick="${toggleFn}">${chkSVG()}</div>
+    </div>
+    <div class="fields">
+      <div class="field"><label>重量 (kg)</label><input type="number" inputmode="decimal" min="0" placeholder="0" value="${s.weight}" oninput="${stRef}.weight=this.value"></div>
+      <div class="field"><label>回数</label><input type="number" inputmode="numeric" min="0" placeholder="0" value="${s.reps}" oninput="${stRef}.reps=this.value"></div>
+      <div class="field"><label>セット数</label>
+        <div class="counter-wrap">
+          <button class="cnt-btn" onclick="${cntPre}-1${cntSuf}">−</button>
+          <div class="cnt-val" id="cnt-${ex.id}">${s.sets}</div>
+          <button class="cnt-btn" onclick="${cntPre}1${cntSuf}">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="memo-row">
+      <span class="memo-label">メモ</span>
+      <input class="memo-input" type="text" placeholder="気づいたことなど..." value="${s.comment}" oninput="${stRef}.comment=this.value">
+    </div>
+  </div>`;
+}
+
+function renderRecord() {
+  let html = `<div class="progress-bar-wrap">
+    <div class="progress-label"><span>進捗</span><span id="prog-label">0 / 6 完了</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>`;
+  EXERCISES.forEach(ex => {
+    html += exCardHTML(ex, state[ex.id], 'chk-'+ex.id, 'card-'+ex.id,
+      `toggleDone('${ex.id}')`, `state['${ex.id}']`,
+      `changeCount('${ex.id}',`, ',state)');
+  });
+  html += `<button class="save-btn" onclick="saveWorkout()">今日のトレーニングを保存</button>`;
+  document.getElementById('view-record').innerHTML = html;
+  updateProgress();
+}
+
+function saveWorkout() { commitEntry(todayStr(), state); showToast('保存しました！'); }
+
+function commitEntry(dateStr, src) {
+  const history = getHistory();
+  const entry = { date:dateStr, exercises:[] };
+  EXERCISES.forEach(ex => {
+    const s = src[ex.id];
+    if(s.weight!==''||s.reps!==''||s.comment!==''||s.done)
+      entry.exercises.push({ id:ex.id, name:ex.name, weight:s.weight, reps:s.reps, sets:s.sets, comment:s.comment, done:s.done });
+  });
+  if(!entry.exercises.length) return false;
+  const idx = history.findIndex(h=>h.date===dateStr);
+  if(idx>=0) history[idx]=entry; else history.unshift(entry);
+  saveHistory(history.slice(0,120));
+  return true;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+function initEditState(dateStr) {
+  const day = getHistory().find(h=>h.date===dateStr);
+  editState = {};
+  EXERCISES.forEach(ex => {
+    const found = day && day.exercises.find(e=>e.id===ex.id);
+    editState[ex.id] = found
+      ? { weight:found.weight, reps:found.reps, sets:found.sets||3, comment:found.comment||'', done:found.done||false }
+      : { weight:'', reps:'', sets:3, comment:'', done:false };
+  });
+}
+
+function tapCalDate(dateStr) {
+  const hasRecord = getHistory().some(h=>h.date===dateStr);
+  if(selectedDate===dateStr && panelMode==='view') { selectedDate=null; panelMode=null; }
+  else if(hasRecord) { selectedDate=dateStr; panelMode='view'; }
+  else { selectedDate=dateStr; panelMode='new'; initEditState(dateStr); }
+  renderHistoryTab();
+}
+
+function openEdit(dateStr) { selectedDate=dateStr; panelMode='edit'; initEditState(dateStr); renderHistoryTab(); }
+function cancelPanel() { panelMode='view'; renderHistoryTab(); }
+
+function savePanel() {
+  const isNew = panelMode==='new';
+  if(!commitEntry(selectedDate, editState)) { showToast('内容を入力してください'); return; }
+  showToast(isNew?'追加しました！':'更新しました！');
+  panelMode='view';
+  renderHistoryTab();
+}
+
+function toggleEditDone(exId) {
+  editState[exId].done = !editState[exId].done;
+  document.getElementById('ecard-'+exId).classList.toggle('done', editState[exId].done);
+  document.getElementById('echk-'+exId).classList.toggle('checked', editState[exId].done);
+}
+
+function renderHistoryTab() {
+  const history = getHistory();
+  const {year,month} = viewMonth;
+  const monthStr = `${year}-${String(month+1).padStart(2,'0')}`;
+  const monthDays = history.filter(h=>h.date.startsWith(monthStr));
+  const workedDates = new Set(monthDays.map(h=>h.date));
+  const todayS = todayStr();
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const firstDow = new Date(year,month,1).getDay();
+  const monthNames=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const totalSets = monthDays.reduce((a,day)=>a+day.exercises.reduce((b,ex)=>b+(ex.sets||0),0),0);
+
+  let html = `<div class="month-nav">
+    <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+    <div class="month-title">${year}年 ${monthNames[month]}</div>
+    <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val">${monthDays.length}</div><div class="stat-unit">回</div><div class="stat-label">今月のトレーニング</div></div>
+    <div class="stat-card"><div class="stat-val">${totalSets}</div><div class="stat-unit">セット</div><div class="stat-label">今月の総セット数</div></div>
+  </div>
+  <div class="calendar"><div class="cal-dow">`;
+  ['日','月','火','水','木','金','土'].forEach(d=>{html+=`<div class="cal-dow-cell">${d}</div>`;});
+  html+=`</div><div class="cal-grid">`;
+  for(let i=0;i<firstDow;i++) html+=`<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls='cal-cell';
+    if(workedDates.has(ds)) cls+=' worked';
+    if(ds===todayS) cls+=' today';
+    if(selectedDate===ds) cls+=' selected';
+    html+=`<div class="${cls}" onclick="tapCalDate('${ds}')">${d}</div>`;
+  }
+  html+=`</div></div>`;
+
+  if(panelMode==='view' && selectedDate){
+    const day=history.find(h=>h.date===selectedDate);
+    if(day){
+      const doneCount=day.exercises.filter(e=>e.done).length;
+      html+=`<div class="day-panel">
+        <div class="day-panel-header">
+          <span>${formatDateLabel(day.date)}</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span class="detail-badge">${doneCount}/${EXERCISES.length} 完了</span>
+            <button class="panel-action-btn" onclick="openEdit('${day.date}')">編集</button>
+          </div>
+        </div>`;
+      day.exercises.forEach(ex=>{
+        html+=`<div class="history-ex-line">
+          <div>
+            <div class="history-ex-name">${ex.done?'<span class="done-mark">✓</span>':''} ${ex.name}</div>
+            ${ex.comment?`<div class="history-ex-memo">💬 ${ex.comment}</div>`:''}
+          </div>
+          <div class="history-ex-val">${ex.weight?ex.weight+'kg':'-'} × ${ex.reps?ex.reps+'回':'-'} / ${ex.sets}セット</div>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+  }
+
+  if(panelMode==='edit'||panelMode==='new'){
+    const saveLabel=panelMode==='new'?'この日の記録を追加':'この日の記録を更新';
+    const titleLabel=panelMode==='new'?'記録を追加':'記録を編集';
+    html+=`<div class="day-panel">
+      <div class="day-panel-header">${formatDateLabel(selectedDate)}　${titleLabel}</div>`;
+    EXERCISES.forEach(ex=>{
+      const s=editState[ex.id];
+      html+=exCardHTML(ex,s,'echk-'+ex.id,'ecard-'+ex.id,
+        `toggleEditDone('${ex.id}')`,`editState['${ex.id}']`,
+        `changeCount('${ex.id}',`,',editState)');
+    });
+    html+=`<button class="edit-save-btn" onclick="savePanel()">${saveLabel}</button>
+      <button class="edit-cancel-btn" onclick="cancelPanel()">キャンセル</button>
+    </div>`;
+  }
+
+  if(monthDays.length>0 && !panelMode){
+    html+=`<div style="text-align:right;margin-top:8px"><button class="clear-btn" onclick="clearMonth('${monthStr}')">この月を削除</button></div>`;
+  }
+
+  document.getElementById('view-history').innerHTML=html;
+}
+
+function changeMonth(delta){
+  viewMonth.month+=delta;
+  if(viewMonth.month<0){viewMonth.month=11;viewMonth.year--;}
+  if(viewMonth.month>11){viewMonth.month=0;viewMonth.year++;}
+  selectedDate=null; panelMode=null;
+  renderHistoryTab();
+}
+function clearMonth(monthStr){
+  if(!confirm(`${monthStr}の記録を全て削除しますか？`))return;
+  saveHistory(getHistory().filter(h=>!h.date.startsWith(monthStr)));
+  selectedDate=null; panelMode=null;
+  renderHistoryTab();
+}
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='record')||(i===1&&tab==='history')));
+  document.getElementById('view-record').classList.toggle('active',tab==='record');
+  document.getElementById('view-history').classList.toggle('active',tab==='history');
+  if(tab==='history'){panelMode=null;renderHistoryTab();}
+}
+
+const d=new Date();
+document.getElementById('today-date').textContent=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+renderRecord();
+</script>
+</body>
+</html>
